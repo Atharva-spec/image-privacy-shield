@@ -115,9 +115,11 @@ export default function Index() {
   const hasImages = images.length > 0;
 
   return (
-    <div className="flex min-h-screen">
-      {/* Main content */}
-      <div className="flex-1 min-w-0">
+    <div className="min-h-screen">
+      <div
+        className="transition-[padding] duration-300 ease-out"
+        style={{ paddingRight: hasImages ? 260 : 0 }}
+      >
         <div className="mx-auto max-w-3xl px-4 py-8 sm:py-16">
           {/* Header */}
           <div className="mb-8 text-center animate-fade-up">

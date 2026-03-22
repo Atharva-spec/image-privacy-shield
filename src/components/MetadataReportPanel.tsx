@@ -127,7 +127,7 @@ export default function MetadataReportPanel({ image, visible }: Props) {
 
   return (
     <div
-      className="flex w-[260px] shrink-0 flex-col border-l overflow-hidden"
+      className="fixed right-0 top-0 h-screen w-[260px] flex flex-col border-l overflow-hidden z-30"
       style={{
         background: "hsl(240 33% 4%)",
         borderColor: "hsl(245 20% 16%)",
