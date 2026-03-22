@@ -34,7 +34,7 @@ export default function Index() {
     for (const file of files) {
       const metadata = await readMetadata(file);
       const fields = Object.keys(metadata);
-      const riskScore = calculateRiskScore(fields);
+      const riskScore = calculateRiskScore(fields, file.type);
       newImages.push({
         id: crypto.randomUUID(),
         file,

@@ -33,13 +33,30 @@ export function isSensitiveField(field: string): boolean {
   return SENSITIVE_FIELDS.has(field);
 }
 
-export function calculateRiskScore(fields: string[]): number {
+export function calculateRiskScore(fields: string[], fileType?: string): number {
   let score = 0;
   if (fields.some((f) => GPS_FIELDS.includes(f))) score += 50;
   if (fields.some((f) => DEVICE_FIELDS.includes(f))) score += 20;
   if (fields.some((f) => TIME_FIELDS.includes(f))) score += 15;
   if (fields.some((f) => IDENTITY_FIELDS.includes(f))) score += 15;
+  // JPEG files always contain MakerNote data that Sharp strips
+  if (fileType === "image/jpeg") score += 10;
   return Math.min(score, 100);
+}
+
+export function isJpeg(file: File): boolean {
+  return file.type === "image/jpeg";
+}
+
+export function isPng(file: File): boolean {
+  return file.type === "image/png";
+}
+
+export function getFileTypeLabel(file: File): string {
+  if (file.type === "image/jpeg") return "JPEG";
+  if (file.type === "image/png") return "PNG";
+  if (file.type === "image/webp") return "WEBP";
+  return "IMG";
 }
 
 export function getRiskLevel(score: number): { label: string; color: "success" | "warning" | "destructive" } {
