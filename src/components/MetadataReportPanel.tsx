@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield } from "lucide-react";
-import { isSensitiveField, getRiskLevel, isJpeg, getFileTypeLabel } from "@/lib/metadata";
+import {
+  isSensitiveField,
+  getRiskLevel,
+  isJpeg,
+  getFileTypeLabel,
+  type JpegHiddenBlocks,
+} from "@/lib/metadata";
 import type { QueuedImage } from "@/pages/Index";
 import RiskCircle from "@/components/RiskCircle";
 
@@ -9,43 +15,63 @@ const GPS_FIELDS = ["GPSLatitude", "GPSLongitude", "GPSAltitude", "GPSLatitudeRe
 const DEVICE_FIELDS = ["Make", "Model", "Software", "CameraSerialNumber", "BodySerialNumber", "LensSerialNumber"];
 const TIME_FIELDS = ["DateTime", "DateTimeOriginal", "DateTimeDigitized"];
 
+interface ReportField {
+  key: string;
+  value: string;
+  hint?: string;
+}
+
 interface FieldGroup {
   label: string;
-  fields: [string, string][];
+  fields: ReportField[];
   isHidden?: boolean;
 }
 
-function groupFields(metadata: Record<string, string>, fileIsJpeg: boolean): FieldGroup[] {
+const MAKERNOTE_HINT =
+  "Vendor-only EXIF block. On some devices it can hold serials or other identifiers; rarely, extra network-related vendor fields.";
+const THUMBNAIL_HINT =
+  "Smaller preview stored inside the JPEG. It is a separate image buffer and is removed when you strip metadata.";
+
+function groupFields(
+  metadata: Record<string, string>,
+  fileIsJpeg: boolean,
+  jpegHidden?: JpegHiddenBlocks
+): FieldGroup[] {
   const groups: FieldGroup[] = [
     { label: "Location data", fields: [] },
     { label: "Device info", fields: [] },
     { label: "Timestamps", fields: [] },
   ];
 
-  // Hidden data group for JPEG
-  if (fileIsJpeg) {
-    groups.push({
-      label: "Hidden data",
-      fields: [
-        ["MakerNote", "Manufacturer private data (present)"],
-        ["EmbeddedThumbnail", "Internal preview image (present)"],
-      ],
-      isHidden: true,
-    });
+  if (fileIsJpeg && jpegHidden) {
+    const hiddenFields: ReportField[] = [];
+    if (jpegHidden.makerNote) {
+      hiddenFields.push({ key: "MakerNote", value: "", hint: MAKERNOTE_HINT });
+    }
+    if (jpegHidden.embeddedThumbnail) {
+      hiddenFields.push({ key: "EmbeddedThumbnail", value: "", hint: THUMBNAIL_HINT });
+    }
+    if (hiddenFields.length > 0) {
+      groups.push({ label: "Hidden data", fields: hiddenFields, isHidden: true });
+    }
   }
 
   groups.push({ label: "Other fields", fields: [] });
 
   for (const [key, val] of Object.entries(metadata)) {
-    if (GPS_FIELDS.includes(key)) groups[0].fields.push([key, val]);
-    else if (DEVICE_FIELDS.includes(key)) groups[1].fields.push([key, val]);
-    else if (TIME_FIELDS.includes(key)) groups[2].fields.push([key, val]);
+    if (GPS_FIELDS.includes(key)) groups[0].fields.push({ key, value: val });
+    else if (DEVICE_FIELDS.includes(key)) groups[1].fields.push({ key, value: val });
+    else if (TIME_FIELDS.includes(key)) groups[2].fields.push({ key, value: val });
     else {
-      // Add to "Other fields" (last group)
-      groups[groups.length - 1].fields.push([key, val]);
+      groups[groups.length - 1].fields.push({ key, value: val });
     }
   }
   return groups.filter((g) => g.fields.length > 0);
+}
+
+function hiddenBlockCount(jpegHidden?: JpegHiddenBlocks): number {
+  if (!jpegHidden) return 0;
+  return (jpegHidden.makerNote ? 1 : 0) + (jpegHidden.embeddedThumbnail ? 1 : 0);
 }
 
 /* ── Main Panel ── */
@@ -69,7 +95,10 @@ export default function MetadataReportPanel({ image, visible }: Props) {
   };
 
   const fileIsJpeg = image ? isJpeg(image.file) : false;
-  const groups = useMemo(() => (image ? groupFields(image.metadata, fileIsJpeg) : []), [image, fileIsJpeg]);
+  const groups = useMemo(
+    () => (image ? groupFields(image.metadata, fileIsJpeg, image.jpegHidden) : []),
+    [image, fileIsJpeg]
+  );
   const { label: riskLabel, color: riskColor } = image
     ? getRiskLevel(image.riskScore)
     : { label: "—", color: "success" as const };
@@ -78,6 +107,8 @@ export default function MetadataReportPanel({ image, visible }: Props) {
   const sensitiveFields = image
     ? Object.keys(image.metadata).filter(isSensitiveField).length
     : 0;
+
+  const hiddenDataBlocks = hiddenBlockCount(image?.jpegHidden);
 
   const riskDesc = (() => {
     if (!image) return "";
@@ -89,7 +120,9 @@ export default function MetadataReportPanel({ image, visible }: Props) {
     } else {
       parts.push("Minimal metadata detected. Low privacy exposure.");
     }
-    if (fileIsJpeg) parts.push("Manufacturer private data detected.");
+    if (fileIsJpeg && hiddenDataBlocks > 0) {
+      parts.push("Extra EXIF image data (maker note and/or embedded preview) detected.");
+    }
     return parts.join(" ");
   })();
 
@@ -195,7 +228,7 @@ export default function MetadataReportPanel({ image, visible }: Props) {
                     <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-1">
                       {group.label}
                     </p>
-                    {group.fields.map(([key, val]) => {
+                    {group.fields.map(({ key, value: val, hint }) => {
                       const idx = rowIdx++;
                       const sensitive = isSensitiveField(key);
                       const cleaned = image.cleaned && tab === "after";
@@ -210,7 +243,7 @@ export default function MetadataReportPanel({ image, visible }: Props) {
                             delay: idx * 0.03,
                             ease: "easeOut",
                           }}
-                          className="flex items-baseline justify-between gap-2 py-[3px]"
+                          className="flex items-baseline justify-between gap-2 py-[3px] min-w-0"
                           style={
                             cleaned && isHiddenRow
                               ? { borderLeft: "2px solid hsla(155, 80%, 41%, 0.3)", paddingLeft: 6 }
@@ -230,16 +263,18 @@ export default function MetadataReportPanel({ image, visible }: Props) {
                               removed
                             </span>
                           ) : isHiddenRow ? (
-                            <div className="flex flex-col items-end shrink-0">
+                            <div className="flex flex-col items-end min-w-0 max-w-[min(148px,100%)]">
                               <span
-                                className="font-mono text-[10px]"
+                                className="font-mono text-[10px] shrink-0"
                                 style={{ color: "hsl(348 100% 64%)" }}
                               >
                                 present
                               </span>
-                              <span className="font-mono text-[9px] text-muted-foreground">
-                                may contain Wi-Fi / cell data
-                              </span>
+                              {hint ? (
+                                <span className="font-mono text-[9px] text-muted-foreground text-right leading-snug break-words">
+                                  {hint}
+                                </span>
+                              ) : null}
                             </div>
                           ) : (
                             <span
@@ -269,7 +304,14 @@ export default function MetadataReportPanel({ image, visible }: Props) {
               {[
                 { label: "Total fields", value: String(totalFields) },
                 { label: "Sensitive", value: String(sensitiveFields) },
-                { label: "Hidden data", value: fileIsJpeg ? "2 blocks" : "—" },
+                {
+                  label: "Hidden data",
+                  value: fileIsJpeg
+                    ? hiddenDataBlocks > 0
+                      ? `${hiddenDataBlocks} block${hiddenDataBlocks === 1 ? "" : "s"}`
+                      : "none detected"
+                    : "—",
+                },
                 { label: "File type", value: fileTypeLabel },
                 {
                   label: "Status",

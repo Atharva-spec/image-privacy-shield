@@ -7,13 +7,21 @@ import SummaryStats from "@/components/SummaryStats";
 import ImageCard from "@/components/ImageCard";
 import SuccessBanner from "@/components/SuccessBanner";
 import MetadataReportPanel from "@/components/MetadataReportPanel";
-import { readMetadata, stripMetadata, calculateRiskScore, type ImageMetadata } from "@/lib/metadata";
+import {
+  readMetadata,
+  stripMetadata,
+  calculateRiskScore,
+  type ImageMetadata,
+  type JpegHiddenBlocks,
+} from "@/lib/metadata";
 
 export interface QueuedImage {
   id: string;
   file: File;
   thumbUrl: string;
   metadata: ImageMetadata;
+  /** Present only for JPEG; from EXIF binary block detection. */
+  jpegHidden?: JpegHiddenBlocks;
   riskScore: number;
   cleaned: boolean;
   cleanedBlob?: Blob;
@@ -32,14 +40,15 @@ export default function Index() {
   const handleFiles = useCallback(async (files: File[]) => {
     const newImages: QueuedImage[] = [];
     for (const file of files) {
-      const metadata = await readMetadata(file);
+      const { metadata, jpegHidden } = await readMetadata(file);
       const fields = Object.keys(metadata);
-      const riskScore = calculateRiskScore(fields, file.type);
+      const riskScore = calculateRiskScore(fields, file.type, jpegHidden ?? null);
       newImages.push({
         id: crypto.randomUUID(),
         file,
         thumbUrl: URL.createObjectURL(file),
         metadata,
+        ...(jpegHidden != null ? { jpegHidden } : {}),
         riskScore,
         cleaned: false,
       });

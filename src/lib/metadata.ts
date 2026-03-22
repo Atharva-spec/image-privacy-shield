@@ -4,6 +4,17 @@ export interface ImageMetadata {
   [key: string]: string;
 }
 
+/** Binary EXIF sections common on JPEGs; detected separately from parsed tag list. */
+export interface JpegHiddenBlocks {
+  makerNote: boolean;
+  embeddedThumbnail: boolean;
+}
+
+export interface ReadMetadataResult {
+  metadata: ImageMetadata;
+  jpegHidden?: JpegHiddenBlocks;
+}
+
 const SENSITIVE_FIELDS = new Set([
   "GPSLatitude",
   "GPSLongitude",
@@ -33,14 +44,23 @@ export function isSensitiveField(field: string): boolean {
   return SENSITIVE_FIELDS.has(field);
 }
 
-export function calculateRiskScore(fields: string[], fileType?: string): number {
+export function calculateRiskScore(
+  fields: string[],
+  fileType?: string,
+  jpegHidden?: JpegHiddenBlocks | null
+): number {
   let score = 0;
   if (fields.some((f) => GPS_FIELDS.includes(f))) score += 50;
   if (fields.some((f) => DEVICE_FIELDS.includes(f))) score += 20;
   if (fields.some((f) => TIME_FIELDS.includes(f))) score += 15;
   if (fields.some((f) => IDENTITY_FIELDS.includes(f))) score += 15;
-  // JPEG files always contain MakerNote data that Sharp strips
-  if (fileType === "image/jpeg") score += 10;
+  if (
+    fileType === "image/jpeg" &&
+    jpegHidden &&
+    (jpegHidden.makerNote || jpegHidden.embeddedThumbnail)
+  ) {
+    score += 10;
+  }
   return Math.min(score, 100);
 }
 
@@ -65,10 +85,18 @@ export function getRiskLevel(score: number): { label: string; color: "success" |
   return { label: "HIGH", color: "destructive" };
 }
 
-export async function readMetadata(file: File): Promise<ImageMetadata> {
+export async function readMetadata(file: File): Promise<ReadMetadataResult> {
   const buffer = await file.arrayBuffer();
+  const isJpegFile = file.type === "image/jpeg";
   try {
-    const tags = ExifReader.load(buffer, { expanded: false });
+    const tags = ExifReader.load(buffer, { expanded: false }) as Record<string, unknown>;
+    const jpegHidden: JpegHiddenBlocks | undefined = isJpegFile
+      ? {
+          makerNote: tags.MakerNote != null,
+          embeddedThumbnail: tags.Thumbnail != null,
+        }
+      : undefined;
+
     const result: ImageMetadata = {};
     for (const [key, value] of Object.entries(tags)) {
       if (key === "MakerNote" || key === "UserComment" || key === "Thumbnail") continue;
@@ -78,13 +106,18 @@ export async function readMetadata(file: File): Promise<ImageMetadata> {
         result[key] = String(desc);
       }
     }
-    return result;
+    return jpegHidden ? { metadata: result, jpegHidden } : { metadata: result };
   } catch {
-    return {};
+    return {
+      metadata: {},
+      ...(isJpegFile
+        ? { jpegHidden: { makerNote: false, embeddedThumbnail: false } }
+        : {}),
+    };
   }
 }
 
-  // Canvas redraw strips EXIF, IPTC, XMP, MakerNote and embedded thumbnails
+// Canvas redraw strips EXIF, IPTC, XMP, MakerNote and embedded thumbnails
 export function stripMetadata(file: File): Promise<{ blob: Blob; size: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
