@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { isSensitiveField, getRiskLevel } from "@/lib/metadata";
 import type { QueuedImage } from "@/pages/Index";
 
@@ -9,25 +10,53 @@ function formatSize(bytes: number) {
 
 interface Props {
   image: QueuedImage;
+  selected?: boolean;
+  onSelect?: () => void;
 }
 
-export default function ImageCard({ image }: Props) {
+export default function ImageCard({ image, selected, onSelect }: Props) {
   const { label, color } = getRiskLevel(image.riskScore);
   const fields = Object.keys(image.metadata);
+  const [flashing, setFlashing] = useState(false);
 
-  const borderClass = image.cleaned
-    ? "border-success/50"
-    : color === "destructive"
-    ? "border-destructive/30"
-    : "border-border";
+  const handleClick = () => {
+    setFlashing(true);
+    setTimeout(() => setFlashing(false), 250);
+    onSelect?.();
+  };
+
+  // Border logic: cleaned pulse > selected > risk
+  const borderStyle: React.CSSProperties = image.cleaned
+    ? {
+        borderColor: "hsla(155,100%,53%,0.3)",
+        boxShadow: image.cleaned && !selected
+          ? undefined
+          : selected
+          ? "0 0 0 4px hsla(155,100%,53%,0.1)"
+          : undefined,
+      }
+    : selected
+    ? { borderColor: "hsl(213 100% 65%)" }
+    : {};
 
   const barColor =
     color === "success" ? "bg-success" : color === "warning" ? "bg-warning" : "bg-destructive";
 
+  // Progress bar color transitions from blue to green
+  const progressDone = image.progress === 100 && image.cleaned;
+
   return (
     <div
-      className={`rounded-lg border bg-card p-4 transition-colors animate-fade-up ${borderClass}`}
-      style={{ animationDelay: `${Math.random() * 0.15}s` }}
+      onClick={handleClick}
+      className={`rounded-lg border bg-card p-4 cursor-pointer animate-fade-up ${
+        image.cleaned ? "metascrub-pulse" : ""
+      }`}
+      style={{
+        ...borderStyle,
+        transition: "border-color 0.2s ease, box-shadow 0.5s ease-out, background-color 0.25s ease",
+        animationDelay: `${Math.random() * 0.15}s`,
+        backgroundColor: flashing ? "hsl(215 30% 15%)" : undefined,
+      }}
     >
       <div className="flex gap-4">
         {/* Thumbnail */}
@@ -47,7 +76,9 @@ export default function ImageCard({ image }: Props) {
               <p className="font-mono text-xs text-muted-foreground">
                 {formatSize(image.cleaned ? image.cleanedSize! : image.file.size)}
                 {image.cleaned && (
-                  <span className="ml-2 text-success">Cleaned ✓</span>
+                  <span className="ml-2 text-success" style={{ animation: "fadeIn 0.3s ease-out" }}>
+                    Cleaned ✓
+                  </span>
                 )}
               </p>
             </div>
@@ -69,7 +100,7 @@ export default function ImageCard({ image }: Props) {
           </div>
 
           {/* Risk bar */}
-          {!image.cleaned && (
+          {!image.cleaned && image.progress === undefined && (
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${barColor}`}
@@ -79,11 +110,20 @@ export default function ImageCard({ image }: Props) {
           )}
 
           {/* Progress bar during cleaning */}
-          {image.progress !== undefined && image.progress < 100 && !image.cleaned && (
+          {image.progress !== undefined && (
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
               <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
-                style={{ width: `${image.progress}%` }}
+                className="h-full rounded-full"
+                style={{
+                  width: `${image.progress}%`,
+                  backgroundColor: progressDone ? "hsl(155 100% 50%)" : "hsl(213 100% 65%)",
+                  transition:
+                    image.progress <= 40
+                      ? "width 0.05s ease"
+                      : image.progress <= 75
+                      ? "width 0.4s ease"
+                      : "width 0.3s ease, background-color 0.3s ease",
+                }}
               />
             </div>
           )}
