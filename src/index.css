@@ -102,3 +102,19 @@
     filter: blur(0);
   }
 }
+
+@keyframes metascrubPulse {
+  0% {
+    box-shadow: 0 0 0 0 hsla(155, 100%, 53%, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 4px hsla(155, 100%, 53%, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 hsla(155, 100%, 53%, 0);
+  }
+}
+
+.metascrub-pulse {
+  animation: metascrubPulse 0.5s ease-out;
+}
