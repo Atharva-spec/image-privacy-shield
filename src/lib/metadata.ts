@@ -84,6 +84,7 @@ export async function readMetadata(file: File): Promise<ImageMetadata> {
   }
 }
 
+  // Canvas redraw strips EXIF, IPTC, XMP, MakerNote and embedded thumbnails
 export function stripMetadata(file: File): Promise<{ blob: Blob; size: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
