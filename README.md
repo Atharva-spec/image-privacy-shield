@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# MetaScrub
 
-TODO: Document your project here
+Strip image metadata in the browser. Images are processed locally and never uploaded.
