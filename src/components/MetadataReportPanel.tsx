@@ -1,87 +1,51 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield } from "lucide-react";
-import { isSensitiveField, getRiskLevel } from "@/lib/metadata";
+import { isSensitiveField, getRiskLevel, isJpeg, getFileTypeLabel } from "@/lib/metadata";
 import type { QueuedImage } from "@/pages/Index";
+import RiskCircle from "@/components/RiskCircle";
 
 const GPS_FIELDS = ["GPSLatitude", "GPSLongitude", "GPSAltitude", "GPSLatitudeRef", "GPSLongitudeRef"];
 const DEVICE_FIELDS = ["Make", "Model", "Software", "CameraSerialNumber", "BodySerialNumber", "LensSerialNumber"];
 const TIME_FIELDS = ["DateTime", "DateTimeOriginal", "DateTimeDigitized"];
 
-function groupFields(metadata: Record<string, string>) {
-  const groups: { label: string; fields: [string, string][] }[] = [
+interface FieldGroup {
+  label: string;
+  fields: [string, string][];
+  isHidden?: boolean;
+}
+
+function groupFields(metadata: Record<string, string>, fileIsJpeg: boolean): FieldGroup[] {
+  const groups: FieldGroup[] = [
     { label: "Location data", fields: [] },
     { label: "Device info", fields: [] },
     { label: "Timestamps", fields: [] },
-    { label: "Other fields", fields: [] },
   ];
+
+  // Hidden data group for JPEG
+  if (fileIsJpeg) {
+    groups.push({
+      label: "Hidden data",
+      fields: [
+        ["MakerNote", "Manufacturer private data (present)"],
+        ["EmbeddedThumbnail", "Internal preview image (present)"],
+      ],
+      isHidden: true,
+    });
+  }
+
+  groups.push({ label: "Other fields", fields: [] });
+
   for (const [key, val] of Object.entries(metadata)) {
     if (GPS_FIELDS.includes(key)) groups[0].fields.push([key, val]);
     else if (DEVICE_FIELDS.includes(key)) groups[1].fields.push([key, val]);
     else if (TIME_FIELDS.includes(key)) groups[2].fields.push([key, val]);
-    else groups[3].fields.push([key, val]);
+    else {
+      // Add to "Other fields" (last group)
+      groups[groups.length - 1].fields.push([key, val]);
+    }
   }
   return groups.filter((g) => g.fields.length > 0);
-}
-
-/* ── Risk Circle ── */
-function RiskCircle({ score, color }: { score: number; color: string }) {
-  const r = 18;
-  const circ = 2 * Math.PI * r; // ~113.1
-  const offset = circ - (score / 100) * circ;
-  const [displayScore, setDisplayScore] = useState(0);
-
-  useEffect(() => {
-    setDisplayScore(0);
-    let start: number | null = null;
-    const duration = 600;
-    function step(ts: number) {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setDisplayScore(Math.round(eased * score));
-      if (p < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }, [score]);
-
-  const strokeColor =
-    color === "destructive"
-      ? "hsl(348 100% 64%)"
-      : color === "warning"
-      ? "hsl(36 90% 55%)"
-      : "hsl(155 100% 40%)";
-
-  return (
-    <div className="flex items-center gap-3">
-      <svg width="48" height="48" viewBox="0 0 48 48">
-        <circle cx="24" cy="24" r={r} fill="none" stroke="hsl(245 20% 16%)" strokeWidth="3" />
-        <circle
-          cx="24"
-          cy="24"
-          r={r}
-          fill="none"
-          stroke={strokeColor}
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray={circ}
-          strokeDashoffset={offset}
-          transform="rotate(-90 24 24)"
-          style={{ transition: "stroke-dashoffset 0.6s cubic-bezier(0.22,1,0.36,1)" }}
-        />
-        <text
-          x="24"
-          y="24"
-          textAnchor="middle"
-          dominantBaseline="central"
-          className="font-mono text-[11px] font-bold"
-          fill={strokeColor}
-        >
-          {displayScore}%
-        </text>
-      </svg>
-    </div>
-  );
 }
 
 /* ── Main Panel ── */
@@ -94,7 +58,6 @@ export default function MetadataReportPanel({ image, visible }: Props) {
   const [tab, setTab] = useState<"before" | "after">("before");
   const [tabKey, setTabKey] = useState(0);
 
-  // Reset tab when image changes
   useEffect(() => {
     setTab("before");
     setTabKey((k) => k + 1);
@@ -105,7 +68,8 @@ export default function MetadataReportPanel({ image, visible }: Props) {
     setTabKey((k) => k + 1);
   };
 
-  const groups = useMemo(() => (image ? groupFields(image.metadata) : []), [image]);
+  const fileIsJpeg = image ? isJpeg(image.file) : false;
+  const groups = useMemo(() => (image ? groupFields(image.metadata, fileIsJpeg) : []), [image, fileIsJpeg]);
   const { label: riskLabel, color: riskColor } = image
     ? getRiskLevel(image.riskScore)
     : { label: "—", color: "success" as const };
@@ -115,14 +79,22 @@ export default function MetadataReportPanel({ image, visible }: Props) {
     ? Object.keys(image.metadata).filter(isSensitiveField).length
     : 0;
 
-  const riskDesc =
-    riskColor === "destructive"
-      ? "GPS coordinates and device identifiers expose your exact location and hardware."
-      : riskColor === "warning"
-      ? "Device or timestamp data could reveal when and where this was taken."
-      : "Minimal metadata detected. Low privacy exposure.";
+  const riskDesc = (() => {
+    if (!image) return "";
+    const parts: string[] = [];
+    if (riskColor === "destructive") {
+      parts.push("GPS coordinates and device identifiers expose your exact location and hardware.");
+    } else if (riskColor === "warning") {
+      parts.push("Device or timestamp data could reveal when and where this was taken.");
+    } else {
+      parts.push("Minimal metadata detected. Low privacy exposure.");
+    }
+    if (fileIsJpeg) parts.push("Manufacturer private data detected.");
+    return parts.join(" ");
+  })();
 
-  // Flatten for stagger index
+  const fileTypeLabel = image ? getFileTypeLabel(image.file) : "—";
+
   let rowIdx = 0;
 
   return (
@@ -227,6 +199,7 @@ export default function MetadataReportPanel({ image, visible }: Props) {
                       const idx = rowIdx++;
                       const sensitive = isSensitiveField(key);
                       const cleaned = image.cleaned && tab === "after";
+                      const isHiddenRow = group.isHidden === true;
                       return (
                         <motion.div
                           key={key}
@@ -238,6 +211,13 @@ export default function MetadataReportPanel({ image, visible }: Props) {
                             ease: "easeOut",
                           }}
                           className="flex items-baseline justify-between gap-2 py-[3px]"
+                          style={
+                            cleaned && isHiddenRow
+                              ? { borderLeft: "2px solid hsla(155, 80%, 41%, 0.3)", paddingLeft: 6 }
+                              : isHiddenRow
+                              ? { borderLeft: "2px solid transparent", paddingLeft: 6 }
+                              : undefined
+                          }
                         >
                           <span className="font-mono text-[10px] text-muted-foreground truncate shrink-0">
                             {key}
@@ -249,6 +229,18 @@ export default function MetadataReportPanel({ image, visible }: Props) {
                             >
                               removed
                             </span>
+                          ) : isHiddenRow ? (
+                            <div className="flex flex-col items-end shrink-0">
+                              <span
+                                className="font-mono text-[10px]"
+                                style={{ color: "hsl(348 100% 64%)" }}
+                              >
+                                present
+                              </span>
+                              <span className="font-mono text-[9px] text-muted-foreground">
+                                may contain Wi-Fi / cell data
+                              </span>
+                            </div>
                           ) : (
                             <span
                               className="font-mono text-[10px] truncate text-right max-w-[100px]"
@@ -277,6 +269,8 @@ export default function MetadataReportPanel({ image, visible }: Props) {
               {[
                 { label: "Total fields", value: String(totalFields) },
                 { label: "Sensitive", value: String(sensitiveFields) },
+                { label: "Hidden data", value: fileIsJpeg ? "2 blocks" : "—" },
+                { label: "File type", value: fileTypeLabel },
                 {
                   label: "Status",
                   value: image.cleaned ? "Cleaned ✓" : "Pending",

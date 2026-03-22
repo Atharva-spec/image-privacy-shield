@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { isSensitiveField, getRiskLevel } from "@/lib/metadata";
+import { Info } from "lucide-react";
+import { isSensitiveField, getRiskLevel, isPng, getFileTypeLabel } from "@/lib/metadata";
 import type { QueuedImage } from "@/pages/Index";
 
 function formatSize(bytes: number) {
@@ -7,6 +8,13 @@ function formatSize(bytes: number) {
   if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / 1048576).toFixed(1) + " MB";
 }
+
+const FILE_TYPE_STYLES: Record<string, { bg: string; text: string }> = {
+  JPEG: { bg: "hsla(135, 30%, 12%, 1)", text: "hsl(155 100% 40%)" },
+  PNG: { bg: "hsla(230, 30%, 12%, 1)", text: "hsl(213 100% 65%)" },
+  WEBP: { bg: "hsla(280, 30%, 12%, 1)", text: "hsl(280 60% 70%)" },
+  IMG: { bg: "hsl(var(--secondary))", text: "hsl(var(--muted-foreground))" },
+};
 
 interface Props {
   image: QueuedImage;
@@ -18,6 +26,8 @@ export default function ImageCard({ image, selected, onSelect }: Props) {
   const { label, color } = getRiskLevel(image.riskScore);
   const fields = Object.keys(image.metadata);
   const [flashing, setFlashing] = useState(false);
+  const fileTypeLabel = getFileTypeLabel(image.file);
+  const typeStyle = FILE_TYPE_STYLES[fileTypeLabel] || FILE_TYPE_STYLES.IMG;
 
   const handleClick = () => {
     setFlashing(true);
@@ -25,15 +35,10 @@ export default function ImageCard({ image, selected, onSelect }: Props) {
     onSelect?.();
   };
 
-  // Border logic: cleaned pulse > selected > risk
   const borderStyle: React.CSSProperties = image.cleaned
     ? {
         borderColor: "hsla(155,100%,53%,0.3)",
-        boxShadow: image.cleaned && !selected
-          ? undefined
-          : selected
-          ? "0 0 0 4px hsla(155,100%,53%,0.1)"
-          : undefined,
+        boxShadow: selected ? "0 0 0 4px hsla(155,100%,53%,0.1)" : undefined,
       }
     : selected
     ? { borderColor: "hsl(213 100% 65%)" }
@@ -42,7 +47,6 @@ export default function ImageCard({ image, selected, onSelect }: Props) {
   const barColor =
     color === "success" ? "bg-success" : color === "warning" ? "bg-warning" : "bg-destructive";
 
-  // Progress bar color transitions from blue to green
   const progressDone = image.progress === 100 && image.cleaned;
 
   return (
@@ -73,14 +77,21 @@ export default function ImageCard({ image, selected, onSelect }: Props) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="truncate font-mono text-sm text-foreground">{image.file.name}</p>
-              <p className="font-mono text-xs text-muted-foreground">
-                {formatSize(image.cleaned ? image.cleanedSize! : image.file.size)}
+              <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                <span>{formatSize(image.cleaned ? image.cleanedSize! : image.file.size)}</span>
+                {/* File type badge */}
+                <span
+                  className="rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase"
+                  style={{ backgroundColor: typeStyle.bg, color: typeStyle.text }}
+                >
+                  {fileTypeLabel}
+                </span>
                 {image.cleaned && (
-                  <span className="ml-2 text-success" style={{ animation: "fadeIn 0.3s ease-out" }}>
+                  <span className="text-success" style={{ animation: "fadeIn 0.3s ease-out" }}>
                     Cleaned ✓
                   </span>
                 )}
-              </p>
+              </div>
             </div>
 
             {/* Risk badge */}
@@ -145,6 +156,14 @@ export default function ImageCard({ image, selected, onSelect }: Props) {
               {field}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* PNG disclaimer */}
+      {isPng(image.file) && (
+        <div className="mt-2 flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+          <Info className="h-3 w-3 shrink-0" />
+          <span>PNG metadata detection limited — stripping is still applied</span>
         </div>
       )}
     </div>
