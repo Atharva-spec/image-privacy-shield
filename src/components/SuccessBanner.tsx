@@ -1,4 +1,5 @@
-import { Download, ShieldCheck } from "lucide-react";
+import { Download } from "lucide-react";
+import BrandShield from "@/components/BrandShield";
 
 interface Props {
   totalFieldsRemoved: number;
@@ -11,7 +12,7 @@ export default function SuccessBanner({ totalFieldsRemoved, imageCount, onDownlo
     <div className="animate-fade-up rounded-lg border border-success/30 bg-success/5 p-5">
       <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
         <div className="flex items-center gap-3">
-          <ShieldCheck className="h-6 w-6 text-success" />
+          <BrandShield size="md" alt="" className="opacity-95" />
           <div>
             <p className="font-medium text-foreground">
               All {imageCount} image{imageCount !== 1 ? "s" : ""} cleaned

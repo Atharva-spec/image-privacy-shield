@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield } from "lucide-react";
+import BrandShield from "@/components/BrandShield";
 import {
   isSensitiveField,
   getRiskLevel,
@@ -144,7 +144,7 @@ export default function MetadataReportPanel({ image, visible }: Props) {
       <div className="flex-1 overflow-y-auto px-3 py-4" style={{ scrollbarWidth: "thin" }}>
         {/* Header */}
         <div className="flex items-center gap-2 mb-1">
-          <Shield className="h-4 w-4 text-primary" />
+          <BrandShield size="sm" alt="" />
           <h2 className="font-mono text-xs font-bold tracking-wide text-foreground uppercase">
             Metadata report
           </h2>

@@ -2,8 +2,8 @@ import { useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
-import { Shield } from "lucide-react";
 import DropZone from "@/components/DropZone";
+import BrandShield from "@/components/BrandShield";
 import SummaryStats from "@/components/SummaryStats";
 import ImageCard from "@/components/ImageCard";
 import SuccessBanner from "@/components/SuccessBanner";
@@ -162,7 +162,7 @@ export default function Index() {
               className="inline-flex items-center justify-center gap-2.5 rounded-md text-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               aria-label="MetaScrub home"
             >
-              <Shield className="h-7 w-7 text-primary" aria-hidden />
+              <BrandShield size="lg" alt="" />
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                 Meta<span className="text-primary">Scrub</span>
               </h1>
