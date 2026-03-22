@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
 import { Shield } from "lucide-react";
@@ -30,10 +31,33 @@ export interface QueuedImage {
 }
 
 export default function Index() {
+  const location = useLocation();
   const [images, setImages] = useState<QueuedImage[]>([]);
   const [processing, setProcessing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const allCleaned = images.length > 0 && images.every((i) => i.cleaned);
+
+  const goHome = useCallback(() => {
+    setImages((prev) => {
+      for (const img of prev) {
+        URL.revokeObjectURL(img.thumbUrl);
+      }
+      return [];
+    });
+    setSelectedId(null);
+    setProcessing(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const handleBrandClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (location.pathname === "/") {
+        e.preventDefault();
+        goHome();
+      }
+    },
+    [location.pathname, goHome]
+  );
 
   const selectedImage = images.find((i) => i.id === selectedId) ?? null;
 
@@ -132,12 +156,17 @@ export default function Index() {
         <div className="mx-auto max-w-3xl px-4 py-8 sm:py-16">
           {/* Header */}
           <div className="mb-8 text-center animate-fade-up">
-            <div className="flex items-center justify-center gap-2.5">
-              <Shield className="h-7 w-7 text-primary" />
-              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            <Link
+              to="/"
+              onClick={handleBrandClick}
+              className="inline-flex items-center justify-center gap-2.5 rounded-md text-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              aria-label="MetaScrub home"
+            >
+              <Shield className="h-7 w-7 text-primary" aria-hidden />
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                 Meta<span className="text-primary">Scrub</span>
               </h1>
-            </div>
+            </Link>
             <p className="mt-2 font-mono text-xs text-muted-foreground">
               your images are processed locally in your browser and never stored
             </p>
