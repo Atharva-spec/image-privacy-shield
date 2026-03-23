@@ -8,6 +8,7 @@ import SummaryStats from "@/components/SummaryStats";
 import ImageCard from "@/components/ImageCard";
 import SuccessBanner from "@/components/SuccessBanner";
 import MetadataReportPanel from "@/components/MetadataReportPanel";
+import ThemeToggle from "@/components/ThemeToggle";
 import {
   readMetadata,
   stripMetadata,

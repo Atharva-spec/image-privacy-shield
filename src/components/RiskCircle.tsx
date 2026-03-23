@@ -25,23 +25,30 @@ export default function RiskCircle({ score, color }: Props) {
     requestAnimationFrame(step);
   }, [score]);
 
-  const strokeColor =
+  const strokeColorClass =
     color === "destructive"
-      ? "hsl(348 100% 64%)"
+      ? "stroke-destructive"
       : color === "warning"
-      ? "hsl(36 90% 55%)"
-      : "hsl(155 100% 40%)";
+      ? "stroke-warning"
+      : "stroke-success";
+
+  const fillColorClass =
+    color === "destructive"
+      ? "fill-destructive"
+      : color === "warning"
+      ? "fill-warning"
+      : "fill-success";
 
   return (
     <div className="flex items-center gap-3">
       <svg width="48" height="48" viewBox="0 0 48 48">
-        <circle cx="24" cy="24" r={r} fill="none" stroke="hsl(245 20% 16%)" strokeWidth="3" />
+        <circle cx="24" cy="24" r={r} fill="none" className="stroke-border" strokeWidth="3" />
         <circle
           cx="24"
           cy="24"
           r={r}
           fill="none"
-          stroke={strokeColor}
+          className={strokeColorClass}
           strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray={circ}
@@ -54,8 +61,7 @@ export default function RiskCircle({ score, color }: Props) {
           y="24"
           textAnchor="middle"
           dominantBaseline="central"
-          className="font-mono text-[11px] font-bold"
-          fill={strokeColor}
+          className={`font-mono text-[11px] font-bold ${fillColorClass}`}
         >
           {displayScore}%
         </text>
