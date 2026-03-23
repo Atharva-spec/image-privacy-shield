@@ -155,21 +155,24 @@ export default function Index() {
       >
         <div className="mx-auto max-w-3xl px-4 py-8 sm:py-16">
           {/* Header */}
-          <div className="mb-8 text-center animate-fade-up">
-            <Link
-              to="/"
-              onClick={handleBrandClick}
-              className="inline-flex items-center justify-center gap-2.5 rounded-md text-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              aria-label="MetaScrub home"
-            >
-              <BrandShield size="lg" alt="" />
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Meta<span className="text-primary">Scrub</span>
-              </h1>
-            </Link>
-            <p className="mt-2 font-mono text-xs text-muted-foreground">
-              your images are processed locally in your browser and never stored
-            </p>
+          <div className="mb-8 flex items-start justify-between animate-fade-up">
+            <div>
+              <Link
+                to="/"
+                onClick={handleBrandClick}
+                className="inline-flex items-center gap-2.5 text-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="MetaScrub home"
+              >
+                <BrandShield size="lg" alt="" />
+                <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+                  Meta<span className="text-primary">Scrub</span>
+                </h1>
+              </Link>
+              <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                your images are processed locally — never stored
+              </p>
+            </div>
+            <ThemeToggle />
           </div>
 
           {/* Drop zone */}
