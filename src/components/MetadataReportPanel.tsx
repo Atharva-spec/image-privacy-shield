@@ -132,11 +132,8 @@ export default function MetadataReportPanel({ image, visible }: Props) {
 
   return (
     <div
-      className="fixed right-0 top-0 h-screen w-[260px] flex flex-col border-l overflow-hidden z-30"
+      className="fixed right-0 top-0 h-screen w-[260px] flex flex-col border-l border-border bg-card overflow-hidden z-30"
       style={{
-        background: "hsl(240 33% 4%)",
-        borderColor: "hsl(245 20% 16%)",
-        borderLeftWidth: "0.5px",
         transform: visible ? "translateX(0)" : "translateX(100%)",
         transition: "transform 0.35s cubic-bezier(0.22,1,0.36,1)",
       }}
@@ -156,10 +153,7 @@ export default function MetadataReportPanel({ image, visible }: Props) {
           </p>
         ) : (
           <>
-            <p
-              className="mt-1 truncate font-mono text-[11px] font-medium"
-              style={{ color: "hsl(213 100% 65%)" }}
-            >
+            <p className="mt-1 truncate font-mono text-[11px] font-medium text-primary">
               {image.file.name}
             </p>
             <p className="font-mono text-[10px] text-muted-foreground">
@@ -246,7 +240,7 @@ export default function MetadataReportPanel({ image, visible }: Props) {
                           className="flex items-baseline justify-between gap-2 py-[3px] min-w-0"
                           style={
                             cleaned && isHiddenRow
-                              ? { borderLeft: "2px solid hsla(155, 80%, 41%, 0.3)", paddingLeft: 6 }
+                              ? { borderLeft: "2px solid hsl(var(--success) / 0.3)", paddingLeft: 6 }
                               : isHiddenRow
                               ? { borderLeft: "2px solid transparent", paddingLeft: 6 }
                               : undefined
@@ -256,18 +250,12 @@ export default function MetadataReportPanel({ image, visible }: Props) {
                             {key}
                           </span>
                           {cleaned ? (
-                            <span
-                              className="font-mono text-[10px] font-medium shrink-0"
-                              style={{ color: "hsl(155 100% 40%)" }}
-                            >
+                            <span className="font-mono text-[10px] font-medium shrink-0 text-success">
                               removed
                             </span>
                           ) : isHiddenRow ? (
                             <div className="flex flex-col items-end min-w-0 max-w-[min(148px,100%)]">
-                              <span
-                                className="font-mono text-[10px] shrink-0"
-                                style={{ color: "hsl(348 100% 64%)" }}
-                              >
+                              <span className="font-mono text-[10px] shrink-0 text-destructive">
                                 present
                               </span>
                               {hint ? (
@@ -278,12 +266,9 @@ export default function MetadataReportPanel({ image, visible }: Props) {
                             </div>
                           ) : (
                             <span
-                              className="font-mono text-[10px] truncate text-right max-w-[100px]"
-                              style={{
-                                color: sensitive
-                                  ? "hsl(348 100% 64%)"
-                                  : "hsl(240 20% 93%)",
-                              }}
+                              className={`font-mono text-[10px] truncate text-right max-w-[100px] ${
+                                sensitive ? "text-destructive" : "text-foreground"
+                              }`}
                             >
                               {val}
                             </span>
@@ -316,12 +301,14 @@ export default function MetadataReportPanel({ image, visible }: Props) {
                 {
                   label: "Status",
                   value: image.cleaned ? "Cleaned ✓" : "Pending",
-                  color: image.cleaned ? "hsl(155 100% 40%)" : undefined,
+                  isSuccess: image.cleaned,
                 },
               ].map((s) => (
                 <div key={s.label} className="flex justify-between font-mono text-[10px]">
                   <span className="text-muted-foreground">{s.label}</span>
-                  <span style={s.color ? { color: s.color } : undefined} className={s.color ? "font-medium" : "text-foreground"}>
+                  <span className={
+                    "isSuccess" in s && s.isSuccess ? "font-medium text-success" : "text-foreground"
+                  }>
                     {s.value}
                   </span>
                 </div>

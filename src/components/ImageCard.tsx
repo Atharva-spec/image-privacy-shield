@@ -9,13 +9,6 @@ function formatSize(bytes: number) {
   return (bytes / 1048576).toFixed(1) + " MB";
 }
 
-const FILE_TYPE_STYLES: Record<string, { bg: string; text: string }> = {
-  JPEG: { bg: "hsla(135, 30%, 12%, 1)", text: "hsl(155 100% 40%)" },
-  PNG: { bg: "hsla(230, 30%, 12%, 1)", text: "hsl(213 100% 65%)" },
-  WEBP: { bg: "hsla(280, 30%, 12%, 1)", text: "hsl(280 60% 70%)" },
-  IMG: { bg: "hsl(var(--secondary))", text: "hsl(var(--muted-foreground))" },
-};
-
 interface Props {
   image: QueuedImage;
   selected?: boolean;
@@ -27,22 +20,12 @@ export default function ImageCard({ image, selected, onSelect }: Props) {
   const fields = Object.keys(image.metadata);
   const [flashing, setFlashing] = useState(false);
   const fileTypeLabel = getFileTypeLabel(image.file);
-  const typeStyle = FILE_TYPE_STYLES[fileTypeLabel] || FILE_TYPE_STYLES.IMG;
 
   const handleClick = () => {
     setFlashing(true);
     setTimeout(() => setFlashing(false), 250);
     onSelect?.();
   };
-
-  const borderStyle: React.CSSProperties = image.cleaned
-    ? {
-        borderColor: "hsla(155,100%,53%,0.3)",
-        boxShadow: selected ? "0 0 0 4px hsla(155,100%,53%,0.1)" : undefined,
-      }
-    : selected
-    ? { borderColor: "hsl(213 100% 65%)" }
-    : {};
 
   const barColor =
     color === "success" ? "bg-success" : color === "warning" ? "bg-warning" : "bg-destructive";
@@ -52,15 +35,12 @@ export default function ImageCard({ image, selected, onSelect }: Props) {
   return (
     <div
       onClick={handleClick}
-      className={`rounded-lg border bg-card p-4 cursor-pointer animate-fade-up ${
-        image.cleaned ? "metascrub-pulse" : ""
-      }`}
-      style={{
-        ...borderStyle,
-        transition: "border-color 0.2s ease, box-shadow 0.5s ease-out, background-color 0.25s ease",
-        animationDelay: `${Math.random() * 0.15}s`,
-        backgroundColor: flashing ? "hsl(215 30% 15%)" : undefined,
-      }}
+      className={`rounded-lg border bg-card p-4 cursor-pointer animate-fade-up transition-all duration-200 ${
+        image.cleaned ? "metascrub-pulse border-success/30" : ""
+      } ${selected && !image.cleaned ? "border-primary" : ""} ${
+        selected && image.cleaned ? "ring-2 ring-success/10" : ""
+      } ${flashing ? "bg-accent" : ""}`}
+      style={{ animationDelay: `${Math.random() * 0.15}s` }}
     >
       <div className="flex gap-4">
         {/* Thumbnail */}
@@ -79,17 +59,11 @@ export default function ImageCard({ image, selected, onSelect }: Props) {
               <p className="truncate font-mono text-sm text-foreground">{image.file.name}</p>
               <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                 <span>{formatSize(image.cleaned ? image.cleanedSize! : image.file.size)}</span>
-                {/* File type badge */}
-                <span
-                  className="rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase"
-                  style={{ backgroundColor: typeStyle.bg, color: typeStyle.text }}
-                >
+                <span className="rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase bg-secondary text-secondary-foreground">
                   {fileTypeLabel}
                 </span>
                 {image.cleaned && (
-                  <span className="text-success" style={{ animation: "fadeIn 0.3s ease-out" }}>
-                    Cleaned ✓
-                  </span>
+                  <span className="text-success animate-fade-in">Cleaned ✓</span>
                 )}
               </div>
             </div>
@@ -124,10 +98,9 @@ export default function ImageCard({ image, selected, onSelect }: Props) {
           {image.progress !== undefined && (
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
               <div
-                className="h-full rounded-full"
+                className={`h-full rounded-full ${progressDone ? "bg-success" : "bg-primary"}`}
                 style={{
                   width: `${image.progress}%`,
-                  backgroundColor: progressDone ? "hsl(155 100% 50%)" : "hsl(213 100% 65%)",
                   transition:
                     image.progress <= 40
                       ? "width 0.05s ease"
